@@ -77,6 +77,13 @@ func (agent *Agent) NewSession() {
 // pre-determined graph flow of request, call tools as required, return final answer
 func (agent *Agent) CallAgent(message string) (string, error) {
 
+	// check we have a session
+	if agent.session == nil {
+		err := errors.New("CallAgent(): no session configued. run NewSession() first")
+		log.Println(err)
+		return "", err
+	}
+
 	// make the initial request
 	resp, err := agent.session.SendMessage(agent.ctx, genai.Text(message))
 	if err != nil {
