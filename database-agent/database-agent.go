@@ -57,13 +57,13 @@ var databaseTools = &genai.Tool{
 	},
 		{
 			Name:        "commandQueryDatabase",
-			Description: "Run the supplied MongoDB command on the nasdaq database",
+			Description: "Run the supplied MongoDB command on the nasdaq database. The command MUST be a valid MongoDB JSON command",
 			Parameters: &genai.Schema{
 				Type: genai.TypeObject,
 				Properties: map[string]*genai.Schema{
 					"command": {
 						Type:        genai.TypeString,
-						Description: "The generated MongoDB command in JSON format",
+						Description: "The MongoDB query command in JSON format",
 					},
 				},
 				Required: []string{"command"},
@@ -143,15 +143,30 @@ func commandQueryDatabase(command string) string {
 		return "empty database, cannot continue"
 	}
 
-	// run the command
-	result := db.RunCommand(context.TODO(), command)
-	resultRaw, err := result.Raw()
+	// convert to bson
+	var commandBsonD interface{}
+	commandDat := []byte(command)
+	err = bson.UnmarshalExtJSON(commandDat, true, &commandBsonD)
 	if err != nil {
-		log.Println("runcommand raw error:", err)
-		return "runcommand raw error:" + err.Error()
+		log.Println("bson.UnmarshalExtJSON error:", err)
+		return "bson.UnmarshalExtJSON error:" + err.Error()
+	}
+	var result bson.D
+	// run the command
+	err = db.RunCommand(context.TODO(), commandBsonD).Decode(&result)
+	if err != nil {
+		log.Println("runcommand error:", err)
+		return "runcommand error:" + err.Error()
 	}
 
-	return resultRaw.String()
+	// convert the result
+	resultDat, err := bson.MarshalExtJSON(result, true, false)
+	if err != nil {
+		log.Println("bson.MarshalExtJSON error:", err)
+		return "bson.MarshalExtJSON error:" + err.Error()
+	}
+
+	return string(resultDat)
 }
 
 // agent initialization
@@ -167,10 +182,12 @@ func InitDatabaseAgent(ctx context.Context) (*agentassemble.Agent, error) {
 You are an AI agent that can perform MongoDB database queries.
 You have access to the underlying database through the query and command tools.
 The database contains daily nasdaq stock market data.
-You MUST use the tools to help answer the request and retrun the result.
+You must use the tools to help answer the request and retrun the result.
+You can call the tools multiple times to get the answer to the request.
+You can call the same tool multiple times to get the answer to the request.
+When you know the final answer, you must start the response with the words 'Final Answer:'
 `
 	// initialize the agent
-	//var tools = []*genai.Tool{queryDatabaseTool, commandQueryDatabaseTool}
 	var tools = []*genai.Tool{databaseTools}
 	agentDatabase, err := agentassemble.InitAgent(ctx, &system, tools, callDatabaseTool)
 	if err != nil {

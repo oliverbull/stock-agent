@@ -44,6 +44,7 @@ func main() {
 
 	// call the database agent through the client tool
 	response, err := databaseagent.CallDatabaseAgent("what was Apple's highest close price in November 2024")
+	//response, err := databaseagent.CallDatabaseAgent("how many collections are there")
 	if err != nil {
 		log.Fatalln("error CallAgent:", err)
 	}
