@@ -6,6 +6,7 @@ import (
 	"os"
 	databaseagent "stock-agent/database-agent"
 	loaddatabase "stock-agent/load-database"
+	quarterlyresultsagent "stock-agent/quarterly-results-agent"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -46,7 +47,31 @@ func main() {
 	response, err := databaseagent.CallDatabaseAgent("what was Apple's highest close price in November 2024")
 	//response, err := databaseagent.CallDatabaseAgent("how many collections are there")
 	if err != nil {
-		log.Fatalln("error CallAgent:", err)
+		log.Fatalln("error call agent:", err)
+	}
+	log.Println(response)
+
+	// initialize and run the quarterly results agent
+	qrAgentHostname, exists := os.LookupEnv("QUARTERLY_RESULTS_AGENT_HOSTNAME")
+	if !exists {
+		log.Fatalln("missing QUARTERLY_RESULTS_AGENT_HOSTNAME in .env")
+	}
+	qrAgentPort, exists := os.LookupEnv("QUARTERLY_RESULTS_AGENT_PORT")
+	if !exists {
+		log.Fatalln("missing QUARTERLY_RESULTS_AGENT_PORT in .env")
+	}
+	qrAgent, err := quarterlyresultsagent.InitQuarterlyResultsAgent(context.Background())
+	if err != nil {
+		log.Fatalln("error InitDatabaseAgent:", err)
+	}
+	qrAgent.RunAgent(qrAgentHostname, qrAgentPort)
+
+	time.Sleep(1 * time.Second)
+
+	// call the database agent through the client tool
+	response, err = quarterlyresultsagent.CallQuarterlyResultsAgent("Get Apple's Q4 2024 results")
+	if err != nil {
+		log.Fatalln("error call agent:", err)
 	}
 	log.Println(response)
 }

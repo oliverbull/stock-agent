@@ -191,7 +191,7 @@ When you know the final answer, you must start the response with the words 'Fina
 	var tools = []*genai.Tool{databaseTools}
 	agentDatabase, err := agentassemble.InitAgent(ctx, &system, tools, callDatabaseTool)
 	if err != nil {
-		log.Println("Error initializing the float agent")
+		log.Println("Error initializing the database agent")
 		return nil, err
 	}
 
@@ -264,12 +264,12 @@ var CallDatabaseAgentTool = &genai.Tool{
 func CallDatabaseAgent(message string) (string, error) {
 	log.Println("running callDatabaseAgent tool for :" + message)
 
-	// get the float agent endpoint
-	floatHostname, ok := os.LookupEnv("DATABASE_AGENT_HOSTNAME")
+	// get the agent endpoint
+	hostname, ok := os.LookupEnv("DATABASE_AGENT_HOSTNAME")
 	if !ok {
 		log.Fatalln("environment variable DATABASE_AGENT_HOSTNAME not set")
 	}
-	floatPort, ok := os.LookupEnv("DATABASE_AGENT_PORT")
+	port, ok := os.LookupEnv("DATABASE_AGENT_PORT")
 	if !ok {
 		log.Fatalln("environment variable DATABASE_AGENT_PORT not set")
 	}
@@ -284,7 +284,7 @@ func CallDatabaseAgent(message string) (string, error) {
 	}
 
 	// repare the request
-	req, err := http.NewRequest("POST", "http://"+floatHostname+":"+floatPort+"/agent", bytes.NewBuffer(reqDat))
+	req, err := http.NewRequest("POST", "http://"+hostname+":"+port+"/agent", bytes.NewBuffer(reqDat))
 	if err != nil {
 		return "", err
 	}
