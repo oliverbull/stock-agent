@@ -28,7 +28,7 @@ var quarterlyResultsTools = &genai.Tool{
 			Properties: map[string]*genai.Schema{
 				"ticker": {
 					Type:        genai.TypeString,
-					Description: "The ticker code of the company",
+					Description: "The ticker code of the company in lowercase",
 				},
 				"year": {
 					Type:        genai.TypeString,

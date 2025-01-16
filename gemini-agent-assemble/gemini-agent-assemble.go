@@ -179,7 +179,8 @@ func (agent *Agent) HandleAgentRequest(res http.ResponseWriter, req *http.Reques
 
 // generalized agent service at <hostname>:<port>/agent
 func (agent *Agent) RunAgent(hostname string, port string) {
-	http.HandleFunc("/agent", agent.HandleAgentRequest)
-	go http.ListenAndServe(hostname+":"+port, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/agent", agent.HandleAgentRequest)
+	go http.ListenAndServe(hostname+":"+port, mux)
 	log.Println("agent running at: " + hostname + ":" + port)
 }
