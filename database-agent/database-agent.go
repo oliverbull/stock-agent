@@ -210,15 +210,21 @@ func callDatabaseTool(funcall genai.FunctionCall) (string, error) {
 		// check the params are populated
 		ticker, exists := funcall.Args["ticker"]
 		if !exists {
-			log.Fatalln("Missing ticker")
+			err := errors.New("missing arg: ticker")
+			log.Println(err)
+			return err.Error(), err
 		}
 		startDate, exists := funcall.Args["startDate"]
 		if !exists {
-			log.Fatalln("Missing start date")
+			err := errors.New("missing arg: start date")
+			log.Println(err)
+			return err.Error(), err
 		}
 		endDate, exists := funcall.Args["endDate"]
 		if !exists {
-			log.Fatalln("Missing end date")
+			err := errors.New("missing arg: end date")
+			log.Println(err)
+			return err.Error(), err
 		}
 		// call the query database tool
 		result = queryDatabase(ticker.(string), startDate.(string), endDate.(string))
@@ -262,16 +268,20 @@ var CallDatabaseAgentTool = &genai.Tool{
 
 // client tool for the database agent
 func CallDatabaseAgent(message string) (string, error) {
-	log.Println("running callDatabaseAgent tool for :" + message)
+	log.Println("running CallDatabaseAgent tool for :" + message)
 
 	// get the agent endpoint
 	hostname, ok := os.LookupEnv("DATABASE_AGENT_HOSTNAME")
 	if !ok {
-		log.Fatalln("environment variable DATABASE_AGENT_HOSTNAME not set")
+		err := errors.New("environment variable DATABASE_AGENT_HOSTNAME not set")
+		log.Println(err)
+		return "", err
 	}
 	port, ok := os.LookupEnv("DATABASE_AGENT_PORT")
 	if !ok {
-		log.Fatalln("environment variable DATABASE_AGENT_PORT not set")
+		err := errors.New("environment variable DATABASE_AGENT_PORT not set")
+		log.Println(err)
+		return "", err
 	}
 
 	// build the payload

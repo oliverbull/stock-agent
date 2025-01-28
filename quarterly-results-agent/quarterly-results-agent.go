@@ -45,9 +45,9 @@ var quarterlyResultsTools = &genai.Tool{
 }
 
 // month quarters (1 is Jan, etc...)
-var q1 = []string{"1", "2", "3"}
-var q2 = []string{"4", "5", "6"}
-var q3 = []string{"7", "8", "9"}
+var q1 = []string{"01", "02", "03"}
+var q2 = []string{"04", "05", "06"}
+var q3 = []string{"07", "08", "09"}
 var q4 = []string{"10", "11", "12"}
 
 // tool to check if a quarterly result is available
@@ -139,7 +139,7 @@ func getResults(ticker string, year string, quarter string) string {
 func InitQuarterlyResultsAgent(ctx context.Context) (*agentassemble.Agent, error) {
 	system := `
 You are an AI agent that retrieve a stock ticker's quarterly results.
-You must use the tools to help answer the request and retrun the result.
+You must use the tools to help answer the request and return the result.
 `
 	// initialize the agent
 	var tools = []*genai.Tool{quarterlyResultsTools}
@@ -164,19 +164,30 @@ func quarterlyResultsTool(funcall genai.FunctionCall) (string, error) {
 		// check the params are populated
 		ticker, exists := funcall.Args["ticker"]
 		if !exists {
-			log.Fatalln("Missing ticker")
+			err := errors.New("missing arg: ticker")
+			log.Println(err)
+			return err.Error(), err
 		}
 		year, exists := funcall.Args["year"]
 		if !exists {
-			log.Fatalln("Missing year")
+			err := errors.New("missing arg: year")
+			log.Println(err)
+			return err.Error(), err
 		}
 		quarter, exists := funcall.Args["quarter"]
 		if !exists {
-			log.Fatalln("Missing quarter")
+			err := errors.New("missing arg: quarter")
+			log.Println(err)
+			return err.Error(), err
 		}
 		// call the query database tool
 		result = getResults(ticker.(string), year.(string), quarter.(string))
-		log.Println("quarterly results result: " + result)
+		debugRes := result
+		// cap the debug
+		if len(debugRes) > 500 {
+			debugRes = debugRes[:500]
+		}
+		log.Println("quarterly results result (capped): " + debugRes)
 	} else {
 		log.Println("unhandled function name: " + funcall.Name)
 		return "", errors.New("unhandled function name: " + funcall.Name)
@@ -191,7 +202,7 @@ func quarterlyResultsTool(funcall genai.FunctionCall) (string, error) {
 var CallQuarterlyResultsAgentTool = &genai.Tool{
 	FunctionDeclarations: []*genai.FunctionDeclaration{{
 		Name:        "CallQuarterlyResultsAgent",
-		Description: "Make a request to the quarterly results agent. The agent will extract the requested results file abd return it.",
+		Description: "Make a request to the quarterly results agent. The agent will extract the requested results file and return it.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
@@ -207,16 +218,20 @@ var CallQuarterlyResultsAgentTool = &genai.Tool{
 
 // client tool for the database agent
 func CallQuarterlyResultsAgent(message string) (string, error) {
-	log.Println("running callQuarterlyResultsAgent tool for :" + message)
+	log.Println("running CallQuarterlyResultsAgent tool for :" + message)
 
 	// get the agent endpoint
 	hostname, ok := os.LookupEnv("QUARTERLY_RESULTS_AGENT_HOSTNAME")
 	if !ok {
-		log.Fatalln("environment variable QUARTERLY_RESULTS_AGENT_HOSTNAME not set")
+		err := errors.New("environment variable QUARTERLY_RESULTS_AGENT_HOSTNAME not set")
+		log.Println(err)
+		return "", err
 	}
 	port, ok := os.LookupEnv("QUARTERLY_RESULTS_AGENT_PORT")
 	if !ok {
-		log.Fatalln("environment variable QUARTERLY_RESULTS_AGENT_PORT not set")
+		err := errors.New("environment variable QUARTERLY_RESULTS_AGENT_PORT not set")
+		log.Println(err)
+		return "", err
 	}
 
 	// build the payload
