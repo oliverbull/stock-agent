@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
@@ -181,10 +182,38 @@ func (agent *Agent) HandleAgentRequest(res http.ResponseWriter, req *http.Reques
 	json.NewEncoder(res).Encode(response)
 }
 
+// generalized agent request handler
+func (agent *Agent) HandleRunningRequest(res http.ResponseWriter, req *http.Request) {
+
+	// check for get
+	if req.Method != "GET" {
+		http.Error(res, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// return implicit 200 OK
+}
+
 // generalized agent service at <hostname>:<port>/agent
-func (agent *Agent) RunAgent(hostname string, port string) {
+func (agent *Agent) RunAgent(hostname string, port string) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/agent", agent.HandleAgentRequest)
+	mux.HandleFunc("/running", agent.HandleRunningRequest)
 	go http.ListenAndServe(hostname+":"+port, mux)
+	// ping the agent to make sure its ready
+	ready := false
+	for idx := 0; idx < 10 && !ready; idx++ {
+		res, err := http.Get("http://" + hostname + ":" + port + "/running")
+		if err == nil && res.StatusCode == 200 {
+			ready = true
+		}
+		// wait before next poll
+		time.Sleep(50 * time.Millisecond)
+	}
+	// check for falure
+	if !ready {
+		return errors.New("agent not running")
+	}
 	log.Println("agent running at: " + hostname + ":" + port)
+	return nil
 }

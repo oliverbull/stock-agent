@@ -8,7 +8,6 @@ import (
 	databaseagent "stock-agent/database-agent"
 	loaddatabase "stock-agent/load-database"
 	quarterlyresultsagent "stock-agent/quarterly-results-agent"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -72,9 +71,6 @@ func main() {
 		log.Fatalln("error InitDatInitDataCombineAgentabaseAgent:", err)
 	}
 	dcAgent.RunAgent(dcAgentHostname, dcAgentPort)
-
-	// wait for the agents to start
-	time.Sleep(500 * time.Millisecond)
 
 	// call the database agent through the client tool
 	//response, err := databaseagent.CallDatabaseAgent("what was Apple's highest close price in November 2024")
