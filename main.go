@@ -8,6 +8,7 @@ import (
 	databaseagent "stock-agent/database-agent"
 	loaddatabase "stock-agent/load-database"
 	quarterlyresultsagent "stock-agent/quarterly-results-agent"
+	stockMarketInfoApp "stock-agent/stock-market-info-app"
 
 	"github.com/joho/godotenv"
 )
@@ -68,9 +69,24 @@ func main() {
 	}
 	dcAgent, err := datacombineagent.InitDataCombineAgent(context.Background())
 	if err != nil {
-		log.Fatalln("error InitDatInitDataCombineAgentabaseAgent:", err)
+		log.Fatalln("error InitDataCombineAgent:", err)
 	}
 	dcAgent.RunAgent(dcAgentHostname, dcAgentPort)
+
+	// initialize and run the stock market info app as a service
+	smiHostname, exists := os.LookupEnv("STOCK_MARKET_INFO_APP_HOSTNAME")
+	if !exists {
+		log.Fatalln("missing STOCK_MARKET_INFO_APP_HOSTNAME in .env")
+	}
+	smiPort, exists := os.LookupEnv("STOCK_MARKET_INFO_APP_PORT")
+	if !exists {
+		log.Fatalln("missing STOCK_MARKET_INFO_APP_PORT in .env")
+	}
+	smi, err := stockMarketInfoApp.InitStockMarketInfoAgent(context.Background())
+	if err != nil {
+		log.Fatalln("error InitStockMarketInfoAgent:", err)
+	}
+	smi.RunAgent(smiHostname, smiPort)
 
 	// call the database agent through the client tool
 	//response, err := databaseagent.CallDatabaseAgent("what was Apple's highest close price in November 2024")
@@ -88,7 +104,14 @@ func main() {
 	//log.Println(response)
 
 	// call the data combiner for a compound query
-	response, err := datacombineagent.CallDataCombineAgent("Get Apple's close price for all of November 2024, summarize the same years Q4 results and then generate a table for all quarters of 2024 financial results")
+	//response, err := datacombineagent.CallDataCombineAgent("Get Apple's close price for all of November 2024, summarize the same years Q4 results and then generate a table for all quarters of 2024 financial results")
+	if err != nil {
+		log.Fatalln("error call agent:", err)
+	}
+	//log.Println(response)
+
+	// call the stock market info app
+	response, err := stockMarketInfoApp.CallStockMarketInfoApp("Get Apple's close price for all of November 2024, summarize the same years Q4 results and then generate a table for all quarters of 2024 financial results")
 	if err != nil {
 		log.Fatalln("error call agent:", err)
 	}

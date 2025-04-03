@@ -1,4 +1,4 @@
-package datacombineagent
+package stockmarketinfoapp
 
 import (
 	"bytes"
@@ -10,9 +10,8 @@ import (
 	"net/http"
 	"os"
 
-	databaseagent "stock-agent/database-agent"
+	datacombineagent "stock-agent/data-combine-agent"
 	agentassemble "stock-agent/gemini-agent-assemble"
-	quarterlyresultsagent "stock-agent/quarterly-results-agent"
 
 	"github.com/google/generative-ai-go/genai"
 )
@@ -21,18 +20,18 @@ import (
 // data combine agent
 
 // client agent tools descriptions from the agents
-var dataCombineTools = &genai.Tool{
+var stockMarketInfoTools = &genai.Tool{
 	FunctionDeclarations: []*genai.FunctionDeclaration{
-		quarterlyresultsagent.CallQuarterlyResultsAgentTool.FunctionDeclarations[0],
-		databaseagent.CallDatabaseAgentTool.FunctionDeclarations[0],
+		datacombineagent.CallDataCombineAgentTool.FunctionDeclarations[0],
 	},
 }
 
 // agent initialization
-func InitDataCombineAgent(ctx context.Context) (*agentassemble.Agent, error) {
+func InitStockMarketInfoAgent(ctx context.Context) (*agentassemble.Agent, error) {
 	system := `
-You are an AI agent that can process and answer requests on nasdaq companies.
+You are an AI agent that can respond to natural language requests for stock market data information.
 You have access to underlying agent tools that can perform the following actions:
+* Take compound requests and use the tools it has access to for result generation.
 * Get the daily nasdaq stock market data for open, close, high, low.
 * Get a company quarterly results release with their financial data.
 Based on the request, think about how to approach this problem, then act by performing necessary actions (like calling tools), and finally observe the results to refine your understanding and provide a final answer
@@ -41,25 +40,25 @@ You can call the same tool multiple times to get the answer to the request.
 When you know the final answer, you must start the response with the words 'Final Answer:'
 `
 	// initialize the agent
-	var tools = []*genai.Tool{dataCombineTools}
-	agentDataCombine, err := agentassemble.InitAgent(ctx, &system, tools, callDataCombineTool)
+	var tools = []*genai.Tool{stockMarketInfoTools}
+	agentStockMarketInfo, err := agentassemble.InitAgent(ctx, &system, tools, callStockMarketInfoTool)
 	if err != nil {
 		log.Println("Error initializing the database agent")
 		return nil, err
 	}
 
 	// always start a new session
-	agentDataCombine.NewSession()
+	agentStockMarketInfo.NewSession()
 
-	return agentDataCombine, err
+	return agentStockMarketInfo, err
 }
 
 // tool call handler
-func callDataCombineTool(funcall genai.FunctionCall) (string, error) {
+func callStockMarketInfoTool(funcall genai.FunctionCall) (string, error) {
 	result := ""
 	var err error
 	// find the function to call - all tool calls come here
-	if funcall.Name == dataCombineTools.FunctionDeclarations[0].Name {
+	if funcall.Name == stockMarketInfoTools.FunctionDeclarations[0].Name {
 		// check the params are populated
 		message, exists := funcall.Args["message"]
 		if !exists {
@@ -68,27 +67,13 @@ func callDataCombineTool(funcall genai.FunctionCall) (string, error) {
 			return err.Error(), err
 		}
 		// call the query database tool
-		result, err = quarterlyresultsagent.CallQuarterlyResultsAgent(message.(string))
+		datacombineagent.CallDataCombineAgent(message.(string))
+		result, err = datacombineagent.CallDataCombineAgent(message.(string))
 		if err != nil {
-			log.Println("CallQuarterlyResultsAgent():", err)
+			log.Println("CallDataCombineAgent():", err)
 			return err.Error(), err
 		}
-		log.Println("call quarterly results result: " + result)
-	} else if funcall.Name == dataCombineTools.FunctionDeclarations[1].Name {
-		// check the params are populated
-		message, exists := funcall.Args["message"]
-		if !exists {
-			err := errors.New("missing arg: message")
-			log.Println(err)
-			return err.Error(), err
-		}
-		// call the query command
-		result, err = databaseagent.CallDatabaseAgent(message.(string))
-		if err != nil {
-			log.Println("CallDatabaseAgent():", err)
-			return err.Error(), err
-		}
-		log.Println("call database result: " + result)
+		log.Println("call data combine results result: " + result)
 	} else {
 		log.Println("unhandled function name: " + funcall.Name)
 		return "", errors.New("unhandled function name: " + funcall.Name)
@@ -99,17 +84,17 @@ func callDataCombineTool(funcall genai.FunctionCall) (string, error) {
 //////////////////////////////////////////
 // client tools for external agents to use
 
-// data combine agent client tool description
-var CallDataCombineAgentTool = &genai.Tool{
+// stock market info app (agent) client tool description
+var CallStockMarketInfoAppTool = &genai.Tool{
 	FunctionDeclarations: []*genai.FunctionDeclaration{{
-		Name:        "callDataCombineAgent",
-		Description: "Make a request to the data combine agent. The agent will process a complex compound query using the tools it can access and return the combined result. Use this agent when information is needed that you don't have in memory",
+		Name:        "callStockMarketInfoApp",
+		Description: "Make a request to the stock market info app. The app will process the request and return the result.",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
 			Properties: map[string]*genai.Schema{
 				"message": {
 					Type:        genai.TypeString,
-					Description: "The natural language request message for the data combine agent",
+					Description: "The natural language request message for the app",
 				},
 			},
 			Required: []string{"message"},
@@ -117,20 +102,20 @@ var CallDataCombineAgentTool = &genai.Tool{
 	}},
 }
 
-// client tool for the data combine agent
-func CallDataCombineAgent(message string) (string, error) {
-	log.Println("running CallDataCombineAgent tool for :" + message)
+// client tool for the stock market app agent
+func CallStockMarketInfoApp(message string) (string, error) {
+	log.Println("running CallStockMarketInfoApp tool for :" + message)
 
 	// get the agent endpoint
-	hostname, ok := os.LookupEnv("DATA_COMBINE_AGENT_HOSTNAME")
+	hostname, ok := os.LookupEnv("STOCK_MARKET_INFO_APP_HOSTNAME")
 	if !ok {
-		err := errors.New("environment variable DATA_COMBINE_AGENT_HOSTNAME not set")
+		err := errors.New("environment variable STOCK_MARKET_INFO_APP_HOSTNAME not set")
 		log.Println(err)
 		return "", err
 	}
-	port, ok := os.LookupEnv("DATA_COMBINE_AGENT_PORT")
+	port, ok := os.LookupEnv("STOCK_MARKET_INFO_APP_PORT")
 	if !ok {
-		err := errors.New("environment variable DATA_COMBINE_AGENT_PORT not set")
+		err := errors.New("environment variable STOCK_MARKET_INFO_APP_PORT not set")
 		log.Println(err)
 		return "", err
 	}
